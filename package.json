@@ -167,6 +167,12 @@
       "hash": "QmSSeQqc5QeuefkaM6JFV5tSF9knLUkXKVhW1eYRiqe72W",
       "name": "uuid",
       "version": "0.1.0"
+    },
+    {
+      "author": "hsanjuan",
+      "hash": "QmSX7A7ZRoCdfd74EQsXNDP9qDwJHR25Cx7m9NiixUe43A",
+      "name": "go-ds-crdt",
+      "version": "0.0.1"
     }
   ],
   "gxVersion": "0.11.0",
