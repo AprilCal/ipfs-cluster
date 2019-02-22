@@ -8,6 +8,8 @@ import (
 	"syscall"
 	"time"
 
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
 	ipfscluster "github.com/ipfs/ipfs-cluster"
 	"github.com/ipfs/ipfs-cluster/allocator/ascendalloc"
 	"github.com/ipfs/ipfs-cluster/allocator/descendalloc"
@@ -96,7 +98,7 @@ func createCluster(
 	cfgs *cfgs,
 	raftStaging bool,
 ) (*ipfscluster.Cluster, error) {
-	host, err := ipfscluster.NewClusterHost(ctx, cfgs.clusterCfg)
+	host, pubsub, dht, err := ipfscluster.NewClusterHost(ctx, cfgs.clusterCfg)
 	checkErr("creating libP2P Host", err)
 
 	peerstoreMgr := pstoremgr.New(host, cfgs.clusterCfg.GetPeerstorePath())
@@ -118,6 +120,7 @@ func createCluster(
 	cons := setupConsensus(
 		c.String("consensus"),
 		host,
+		pubsub,
 		cfgs,
 		store,
 		raftStaging,
@@ -136,7 +139,7 @@ func createCluster(
 		peersF = cons.Peers
 	}
 
-	mon, err := pubsubmon.New(host, cfgs.pubsubmonCfg, peersF)
+	mon, err := pubsubmon.New(cfgs.pubsubmonCfg, pubsub, peersF)
 	checkErr("creating monitor", err)
 
 	informer, alloc := setupAllocation(
@@ -155,6 +158,7 @@ func createCluster(
 
 	return ipfscluster.NewCluster(
 		host,
+		dht,
 		cfgs.clusterCfg,
 		cons,
 		apis,
@@ -286,6 +290,7 @@ func setupDatastore(
 func setupConsensus(
 	name string,
 	h host.Host,
+	pubsub *pubsub.PubSub,
 	cfgs *cfgs,
 	store ds.ThreadSafeDatastore,
 	raftStaging bool,
@@ -303,6 +308,7 @@ func setupConsensus(
 	case "crdt":
 		convrdt, err := crdt.New(
 			h,
+			pubsub,
 			cfgs.crdtCfg,
 			store,
 		)
