@@ -17,6 +17,7 @@ import (
 	"github.com/ipfs/ipfs-cluster/datastore/inmem"
 	"github.com/ipfs/ipfs-cluster/informer/numpin"
 	"github.com/ipfs/ipfs-cluster/monitor/pubsubmon"
+	"github.com/ipfs/ipfs-cluster/state"
 	"github.com/ipfs/ipfs-cluster/test"
 	"github.com/ipfs/ipfs-cluster/version"
 
@@ -236,7 +237,7 @@ func TestClusterStateSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	st.Rm(ctx, c)
+	st.(state.State).Rm(ctx, c)
 	err = cl.StateSync(ctx)
 	if err != nil {
 		t.Fatal("sync with recover should have worked:", err)
