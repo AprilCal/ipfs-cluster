@@ -247,11 +247,21 @@ func (css *Consensus) Peers(ctx context.Context) ([]peer.ID, error) {
 		return nil, err
 	}
 
-	peers := make([]peer.ID, len(metrics), len(metrics))
+	var peers []peer.ID
 
+	selfIncluded := false
 	for i, m := range metrics {
-		peers[i] = m.Peer
+		peers = append(peers, m.Peer)
+		if m.Peer == css.host.ID() {
+			selfIncluded = true
+		}
 	}
+
+	// Always include self
+	if !selfIncluded {
+		peers = append(peers, c.host.ID())
+	}
+
 	return peers, nil
 }
 

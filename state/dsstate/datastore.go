@@ -134,7 +134,7 @@ func (st *State) List(ctx context.Context) ([]*api.Pin, error) {
 
 	results, err := st.dsRead.Query(q)
 	if err != nil {
-		return []*api.Pin{}, err
+		return nil, err
 	}
 	defer results.Close()
 

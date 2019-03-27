@@ -49,9 +49,6 @@ func daemon(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Deprecated
-	// if c.Bool("upgrade") {}
-
 	bootstraps := parseBootstraps(c.StringSlice("bootstrap"))
 
 	// Execution lock

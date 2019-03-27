@@ -698,7 +698,10 @@ func (pin *Pin) Equals(pin2 *Pin) bool {
 	}
 
 	if pin == pin2 {
-		return true
+		// ask @lanzafame why this is not true
+		// in any case, this is anomalous and we should
+		// not be using this with two nils.
+		return false
 	}
 
 	if !pin.Cid.Equals(pin2.Cid) {
