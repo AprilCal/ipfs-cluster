@@ -5,22 +5,28 @@ import (
 	"errors"
 	"sync"
 
-	ipfscluster "github.com/ipfs/ipfs-cluster"
+	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/ipfs-cluster/api"
 	"github.com/ipfs/ipfs-cluster/state"
 	"github.com/ipfs/ipfs-cluster/state/dsstate"
 
 	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	query "github.com/ipfs/go-datastore/query"
 	crdt "github.com/ipfs/go-ds-crdt"
 	logging "github.com/ipfs/go-log"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 	host "github.com/libp2p/go-libp2p-host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 var logger = logging.Logger("crdt")
+
+var (
+	blocksNs = "b" // blockstore namespace
+)
 
 // Common variables for the module.
 var (
@@ -44,6 +50,7 @@ type Consensus struct {
 	state state.State
 	crdt  *crdt.Datastore
 
+	dht          *dht.IpfsDHT
 	pubsub       *pubsub.PubSub
 	subscription *pubsub.Subscription
 
@@ -60,6 +67,7 @@ type Consensus struct {
 // data and all will be prefixed with cfg.DatastoreNamespace.
 func New(
 	host host.Host,
+	dht *dht.IpfsDHT,
 	pubsub *pubsub.PubSub,
 	cfg *Config,
 	store ds.ThreadSafeDatastore,
@@ -101,9 +109,24 @@ func (css *Consensus) setup() {
 	}
 	css.subscription = topicSub
 
-	dagSyncer := &rpcDAGSyncer{
-		css.rpcClient,
+	var blocksDatastore ds.Batching
+	blocksDatastore = namespace.Wrap(css.store, css.namespace.ChildString(blocksNs))
+
+	ipfs, err := ipfslite.New(
+		css.ctx,
+		blocksDatastore,
+		css.host,
+		css.dht,
+		&ipfslite.Config{
+			Offline: false,
+		},
+	)
+	if err != nil {
+		logger.Errorf("error creating ipfs-lite: %s", err)
+		return
 	}
+
+	dagSyncer := &liteDAGSyncer{ipfs, ipfs.BlockStore()}
 
 	broadcaster := &pubsubBroadcaster{
 		ctx:         css.ctx,
@@ -250,7 +273,7 @@ func (css *Consensus) Peers(ctx context.Context) ([]peer.ID, error) {
 	var peers []peer.ID
 
 	selfIncluded := false
-	for i, m := range metrics {
+	for _, m := range metrics {
 		peers = append(peers, m.Peer)
 		if m.Peer == css.host.ID() {
 			selfIncluded = true
@@ -259,7 +282,7 @@ func (css *Consensus) Peers(ctx context.Context) ([]peer.ID, error) {
 
 	// Always include self
 	if !selfIncluded {
-		peers = append(peers, c.host.ID())
+		peers = append(peers, css.host.ID())
 	}
 
 	return peers, nil
@@ -320,16 +343,25 @@ func (css *Consensus) Leader(ctx context.Context) (peer.ID, error) {
 // datastore. Any writes to this state are processed through the given
 // ipfs connector (the state is offline as it does not require a
 // running cluster peer).
-func OfflineState(cfg *Config, store ds.ThreadSafeDatastore, ipfs ipfscluster.IPFSConnector) (state.BatchingState, error) {
+func OfflineState(cfg *Config, store ds.Batching) (state.BatchingState, error) {
 	opts := crdt.DefaultOptions()
 	opts.Logger = logger
 
-	var dags crdt.DAGSyncer
-	if ipfs != nil {
-		dags = &ipfsConnDAGSyncer{
-			ipfs,
-		}
+	ipfs, err := ipfslite.New(
+		context.Background(),
+		store,
+		nil,
+		nil,
+		&ipfslite.Config{
+			Offline: true,
+		},
+	)
+
+	if err != nil {
+		return nil, err
 	}
+
+	dags := &liteDAGSyncer{ipfs, ipfs.BlockStore()}
 
 	crdt := crdt.New(
 		store,
