@@ -301,12 +301,12 @@ func (css *Consensus) RmPeer(ctx context.Context, pid peer.ID) error { return ni
 // State returns the cluster shared state.
 func (css *Consensus) State(ctx context.Context) (state.ReadOnly, error) { return css.state, nil }
 
-// It should delete all keys under namespace.
+// Clean deletes all crdt-consensus datas from the datastore.
 func (css *Consensus) Clean(ctx context.Context) error {
 	return Clean(ctx, css.config, css.store)
 }
 
-// Cleans removes all CRDT data from the permanent storage.
+// Clean deletes all crdt-consensus datas from the given datastore.
 func Clean(ctx context.Context, cfg *Config, store ds.Datastore) error {
 	logger.Info("cleaning all CRDT data from datastore")
 	q := query.Query{
