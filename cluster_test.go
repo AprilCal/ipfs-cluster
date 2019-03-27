@@ -155,7 +155,7 @@ func testingCluster(t *testing.T) (*Cluster, *mockAPI, *mockConnector, PinTracke
 	raftcon, _ := raft.NewConsensus(host, consensusCfg, inmem.New(), false)
 
 	psmonCfg.CheckInterval = 2 * time.Second
-	mon, err := pubsubmon.New(pubsub, psmonCfg, raftcon.Peers)
+	mon, err := pubsubmon.New(psmonCfg, pubsub, raftcon.Peers)
 	if err != nil {
 		t.Fatal(err)
 	}

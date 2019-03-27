@@ -178,7 +178,7 @@ func createComponents(t *testing.T, i int, clusterSecret []byte, staging bool) (
 	raftCon, err := raft.NewConsensus(host, consensusCfg, inmem.New(), staging)
 	checkErr(t, err)
 
-	mon, err := pubsubmon.New(pubsub, psmonCfg, raftCon.Peers)
+	mon, err := pubsubmon.New(psmonCfg, pubsub, raftCon.Peers)
 	checkErr(t, err)
 
 	tracer, err := observations.SetupTracing(tracingCfg)

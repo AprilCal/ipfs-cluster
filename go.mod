@@ -17,6 +17,8 @@ require (
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-datastore v0.0.1
+	github.com/ipfs/go-ds-badger v0.0.2
+	github.com/ipfs/go-ds-crdt v0.0.1
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-ipfs-api v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -54,6 +56,7 @@ require (
 	github.com/multiformats/go-multiaddr-net v0.0.1
 	github.com/multiformats/go-multicodec v0.1.6
 	github.com/multiformats/go-multihash v0.0.1
+	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190306233201-d0f344d83b0c // indirect
