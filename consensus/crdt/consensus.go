@@ -84,6 +84,7 @@ func New(
 		cancel:    cancel,
 		config:    cfg,
 		host:      host,
+		dht:       dht,
 		store:     store,
 		namespace: ds.NewKey(cfg.DatastoreNamespace),
 		pubsub:    pubsub,
