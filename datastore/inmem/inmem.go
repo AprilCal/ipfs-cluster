@@ -1,4 +1,5 @@
-// Package inmem provides a in-memory datastore for use with Cluster.
+// Package inmem provides a in-memory thread-safe datastore for use with
+// Cluster.
 package inmem
 
 import (
@@ -7,7 +8,7 @@ import (
 )
 
 // New returns a new thread-safe in-memory go-datastore.
-func New() ds.ThreadSafeDatastore {
+func New() ds.Datastore {
 	mapDs := ds.NewMapDatastore()
 	return sync.MutexWrap(mapDs)
 }

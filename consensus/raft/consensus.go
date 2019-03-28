@@ -60,10 +60,12 @@ type Consensus struct {
 //
 // The staging parameter controls if the Raft peer should start in
 // staging mode (used when joining a new Raft peerset with other peers).
+//
+// The store parameter should be a thread-safe datastore.
 func NewConsensus(
 	host host.Host,
 	cfg *Config,
-	store ds.ThreadSafeDatastore,
+	store ds.Datastore,
 	staging bool, // this peer must not be bootstrapped if no state exists
 ) (*Consensus, error) {
 	err := cfg.Validate()
@@ -538,8 +540,9 @@ func parsePIDFromMultiaddr(addr ma.Multiaddr) string {
 
 // OfflineState state returns a cluster state by reading the Raft data and
 // writing it to the given datastore which is then wrapped as a state.State.
-// Usually an in-memory datastore suffices.
-func OfflineState(cfg *Config, store ds.ThreadSafeDatastore) (state.State, error) {
+// Usually an in-memory datastore suffices. The given datastore should be
+// thread-safe.
+func OfflineState(cfg *Config, store ds.Datastore) (state.State, error) {
 	r, snapExists, err := LastStateRaw(cfg)
 	if err != nil {
 		return nil, err

@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	ipfscluster "github.com/ipfs/ipfs-cluster"
@@ -117,6 +118,7 @@ func createCluster(
 	cons := setupConsensus(
 		c.String("consensus"),
 		host,
+		dht,
 		pubsub,
 		cfgs,
 		store,
@@ -277,7 +279,7 @@ func setupPinTracker(
 func setupDatastore(
 	consensus string,
 	cfgs *cfgs,
-) ds.ThreadSafeDatastore {
+) ds.Datastore {
 	stmgr := newStateManager(consensus, cfgs)
 	store, err := stmgr.GetStore()
 	checkErr("creating datastore", err)
@@ -287,9 +289,10 @@ func setupDatastore(
 func setupConsensus(
 	name string,
 	h host.Host,
+	dht *dht.IpfsDHT,
 	pubsub *pubsub.PubSub,
 	cfgs *cfgs,
-	store ds.ThreadSafeDatastore,
+	store ds.Datastore,
 	raftStaging bool,
 ) ipfscluster.Consensus {
 	switch name {
@@ -305,6 +308,7 @@ func setupConsensus(
 	case "crdt":
 		convrdt, err := crdt.New(
 			h,
+			dht,
 			pubsub,
 			cfgs.crdtCfg,
 			store,

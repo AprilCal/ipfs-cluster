@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/ipfs-cluster/consensus/raft"
 	"github.com/ipfs/ipfs-cluster/datastore/badger"
 	"github.com/ipfs/ipfs-cluster/datastore/inmem"
-	"github.com/ipfs/ipfs-cluster/ipfsconn/ipfshttp"
 	"github.com/ipfs/ipfs-cluster/pstoremgr"
 	"github.com/ipfs/ipfs-cluster/state"
 
@@ -23,7 +22,7 @@ import (
 type stateManager interface {
 	ImportState(io.Reader) error
 	ExportState(io.Writer) error
-	GetStore() (ds.ThreadSafeDatastore, error)
+	GetStore() (ds.Datastore, error)
 	Clean() error
 }
 
@@ -45,8 +44,8 @@ type raftStateManager struct {
 	cfgs *cfgs
 }
 
-func (raftsm *raftStateManager) GetStore() (ds.ThreadSafeDatastore, error) {
-	return (inmem.New()).(ds.ThreadSafeDatastore), nil
+func (raftsm *raftStateManager) GetStore() (ds.Datastore, error) {
+	return inmem.New(), nil
 }
 
 func (raftsm *raftStateManager) getOfflineState() (state.State, error) {
@@ -95,34 +94,29 @@ type crdtStateManager struct {
 	cfgs *cfgs
 }
 
-func (crdtsm *crdtStateManager) GetStore() (ds.ThreadSafeDatastore, error) {
+func (crdtsm *crdtStateManager) GetStore() (ds.Datastore, error) {
 	bds, err := badger.New(crdtsm.cfgs.badgerCfg)
 	if err != nil {
 		return nil, err
 	}
-	return bds.(ds.ThreadSafeDatastore), nil
+	return bds, nil
 }
 
-func (crdtsm *crdtStateManager) getOfflineState(ipfs ipfscluster.IPFSConnector) (state.BatchingState, error) {
+func (crdtsm *crdtStateManager) getOfflineState() (state.BatchingState, error) {
 	store, err := crdtsm.GetStore()
 	if err != nil {
 		return nil, err
 	}
-	return crdt.OfflineState(crdtsm.cfgs.crdtCfg, store, ipfs)
+	return crdt.OfflineState(crdtsm.cfgs.crdtCfg, store)
 }
 
 func (crdtsm *crdtStateManager) ImportState(r io.Reader) error {
-	ipfs, err := ipfshttp.NewConnector(crdtsm.cfgs.ipfshttpCfg)
+	err := crdtsm.Clean()
 	if err != nil {
 		return err
 	}
 
-	err = crdtsm.Clean()
-	if err != nil {
-		return err
-	}
-
-	st, err := crdtsm.getOfflineState(ipfs)
+	st, err := crdtsm.getOfflineState()
 	if err != nil {
 		return err
 	}
@@ -136,7 +130,7 @@ func (crdtsm *crdtStateManager) ImportState(r io.Reader) error {
 }
 
 func (crdtsm *crdtStateManager) ExportState(w io.Writer) error {
-	st, err := crdtsm.getOfflineState(nil)
+	st, err := crdtsm.getOfflineState()
 	if err != nil {
 		return err
 	}

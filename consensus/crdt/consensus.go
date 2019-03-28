@@ -70,7 +70,7 @@ func New(
 	dht *dht.IpfsDHT,
 	pubsub *pubsub.PubSub,
 	cfg *Config,
-	store ds.ThreadSafeDatastore,
+	store ds.Datastore,
 ) (*Consensus, error) {
 	err := cfg.Validate()
 	if err != nil {
@@ -343,13 +343,23 @@ func (css *Consensus) Leader(ctx context.Context) (peer.ID, error) {
 // datastore. Any writes to this state are processed through the given
 // ipfs connector (the state is offline as it does not require a
 // running cluster peer).
-func OfflineState(cfg *Config, store ds.Batching) (state.BatchingState, error) {
+func OfflineState(cfg *Config, store ds.Datastore) (state.BatchingState, error) {
+	batching, ok := store.(ds.Batching)
+	if !ok {
+		return nil, errors.New("must provide a Bathing datastore")
+	}
 	opts := crdt.DefaultOptions()
 	opts.Logger = logger
 
+	var blocksDatastore ds.Batching
+	blocksDatastore = namespace.Wrap(
+		batching,
+		ds.NewKey(cfg.DatastoreNamespace).ChildString(blocksNs),
+	)
+
 	ipfs, err := ipfslite.New(
 		context.Background(),
-		store,
+		blocksDatastore,
 		nil,
 		nil,
 		&ipfslite.Config{
@@ -364,7 +374,7 @@ func OfflineState(cfg *Config, store ds.Batching) (state.BatchingState, error) {
 	dags := &liteDAGSyncer{ipfs, ipfs.BlockStore()}
 
 	crdt := crdt.New(
-		store,
+		batching,
 		ds.NewKey(cfg.DatastoreNamespace),
 		dags,
 		nil,
