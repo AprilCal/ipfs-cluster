@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	ipfslite "github.com/hsanjuan/ipfs-lite"
+	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	"github.com/ipfs/ipfs-cluster/api"
 	"github.com/ipfs/ipfs-cluster/state"
 	"github.com/ipfs/ipfs-cluster/state/dsstate"
@@ -138,14 +139,53 @@ func (css *Consensus) setup() {
 
 	opts := crdt.DefaultOptions()
 	opts.Logger = logger
+	opts.PutHook = func(k ds.Key, v []byte) {
+		pin := &api.Pin{}
+		err := pin.ProtoUnmarshal(v)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-	crdt := crdt.New(
+		// TODO: tracing for this context
+		css.rpcClient.CallContext(
+			css.ctx,
+			"",
+			"Cluster",
+			"Track",
+			pin,
+			&struct{}{},
+		)
+	}
+	opts.DeleteHook = func(k ds.Key) {
+		c, err := dshelp.DsKeyToCid(k)
+		if err != nil {
+			logger.Error(err, k)
+			return
+		}
+		pin := api.PinCid(c)
+
+		css.rpcClient.CallContext(
+			css.ctx,
+			"",
+			"Cluster",
+			"Untrack",
+			pin,
+			&struct{}{},
+		)
+	}
+
+	crdt, err := crdt.New(
 		css.store,
 		css.namespace,
 		dagSyncer,
 		broadcaster,
 		opts,
 	)
+	if err != nil {
+		logger.Error(err)
+		return
+	}
 
 	css.crdt = crdt
 
@@ -221,36 +261,12 @@ func (css *Consensus) Ready(ctx context.Context) <-chan struct{} {
 
 // LogPin adds a new pin to the shared state.
 func (css *Consensus) LogPin(ctx context.Context, pin *api.Pin) error {
-	err := css.state.Add(ctx, pin)
-	if err != nil {
-		return err
-	}
-
-	return css.rpcClient.CallContext(
-		ctx,
-		"",
-		"Cluster",
-		"Track",
-		pin,
-		&struct{}{},
-	)
+	return css.state.Add(ctx, pin)
 }
 
 // LogUnpin removes a pin from the shared state.
 func (css *Consensus) LogUnpin(ctx context.Context, pin *api.Pin) error {
-	err := css.state.Rm(ctx, pin.Cid)
-	if err != nil {
-		return err
-	}
-
-	return css.rpcClient.CallContext(
-		ctx,
-		"",
-		"Cluster",
-		"Untrack",
-		pin,
-		&struct{}{},
-	)
+	return css.state.Rm(ctx, pin.Cid)
 }
 
 // Peers returns the current known peerset. It uses
@@ -374,12 +390,15 @@ func OfflineState(cfg *Config, store ds.Datastore) (state.BatchingState, error) 
 
 	dags := &liteDAGSyncer{ipfs, ipfs.BlockStore()}
 
-	crdt := crdt.New(
+	crdt, err := crdt.New(
 		batching,
 		ds.NewKey(cfg.DatastoreNamespace),
 		dags,
 		nil,
 		opts,
 	)
+	if err != nil {
+		return nil, err
+	}
 	return dsstate.NewBatching(crdt, "", dsstate.DefaultHandle())
 }
