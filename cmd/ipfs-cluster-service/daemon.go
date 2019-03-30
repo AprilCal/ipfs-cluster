@@ -100,7 +100,9 @@ func createCluster(
 	checkErr("creating libP2P Host", err)
 
 	peerstoreMgr := pstoremgr.New(host, cfgs.clusterCfg.GetPeerstorePath())
-	peerstoreMgr.ImportPeersFromPeerstore(false)
+	// Import and connect to peers (connection happens async and fails
+	// silently when it does not work)
+	peerstoreMgr.ImportPeersFromPeerstore(true)
 
 	api, err := rest.NewAPIWithHost(ctx, cfgs.apiCfg, host)
 	checkErr("creating REST API component", err)
