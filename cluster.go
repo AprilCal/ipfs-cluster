@@ -622,6 +622,27 @@ func (c *Cluster) PeerAdd(ctx context.Context, pid peer.ID) (*api.ID, error) {
 		return id, err
 	}
 
+	// Send a ping metric so that the new node
+	// knows about this one at least
+	// T
+	m := &api.Metric{
+		Name:  pingMetricName,
+		Peer:  c.id,
+		Valid: true,
+	}
+	m.SetTTL(c.config.MonitorPingInterval * 2)
+	err = c.rpcClient.CallContext(
+		ctx,
+		pid,
+		"Cluster",
+		"PeerMonitorLogMetric",
+		m,
+		&struct{}{},
+	)
+	if err != nil {
+		logger.Warning(err)
+	}
+
 	// Ask the new peer to connect its IPFS daemon to the rest
 	err = c.rpcClient.CallContext(
 		ctx,
@@ -632,7 +653,7 @@ func (c *Cluster) PeerAdd(ctx context.Context, pid peer.ID) (*api.ID, error) {
 		&struct{}{},
 	)
 	if err != nil {
-		logger.Error(err)
+		logger.Warning(err)
 	}
 
 	id := &api.ID{}

@@ -32,6 +32,7 @@ var (
 // Common variables for the module.
 var (
 	ErrNoLeader = errors.New("crdt consensus component does not provide a leader")
+	ErrRmPeer   = errors.New("crdt consensus component cannot remove peers")
 )
 
 // Consensus implement ipfscluster.Consensus and provides the facility to add
@@ -309,11 +310,15 @@ func (css *Consensus) Peers(ctx context.Context) ([]peer.ID, error) {
 // component to be usable.
 func (css *Consensus) WaitForSync(ctx context.Context) error { return nil }
 
-// AddPeer is a no-op as we do not need to do peerset management with Merkle-CRDTs.
+// AddPeer is a no-op as we do not need to do peerset management with
+// Merkle-CRDTs. Therefore adding a peer to the peerset means doing nothing.
 func (css *Consensus) AddPeer(ctx context.Context, pid peer.ID) error { return nil }
 
-// RmPeer is a no-op.
-func (css *Consensus) RmPeer(ctx context.Context, pid peer.ID) error { return nil }
+// RmPeer is a no-op which always errors, as, since we do not do peerset
+// management, we also have no ability to remove a peer from it.
+func (css *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
+	return ErrRmPeer
+}
 
 // State returns the cluster shared state.
 func (css *Consensus) State(ctx context.Context) (state.ReadOnly, error) { return css.state, nil }
