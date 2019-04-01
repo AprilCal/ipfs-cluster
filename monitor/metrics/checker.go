@@ -38,6 +38,14 @@ func NewChecker(metrics *Store, threshold float64) *Checker {
 // given peerset.
 func (mc *Checker) CheckPeers(peers []peer.ID) error {
 	for _, peer := range peers {
+		// shortcut checking all metrics based on heartbeat
+		// failure detection
+		if mc.Failed(peer) {
+			err := mc.alert(peer, "ping")
+			if err != nil {
+				return err
+			}
+		}
 		for _, metric := range mc.metrics.PeerMetrics(peer) {
 			if metric.Valid && metric.Expired() {
 				err := mc.alert(metric.Peer, metric.Name)
