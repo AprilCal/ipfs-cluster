@@ -265,8 +265,6 @@ func (ipfs *Connector) Pin(ctx context.Context, hash cid.Cid, maxDepth int) erro
 	ctx, span := trace.StartSpan(ctx, "ipfsconn/ipfshttp/Pin")
 	defer span.End()
 
-	ctx, cancel := context.WithTimeout(ctx, ipfs.config.PinTimeout)
-	defer cancel()
 	pinStatus, err := ipfs.PinLsCid(ctx, hash)
 	if err != nil {
 		return err
@@ -301,6 +299,10 @@ func (ipfs *Connector) Pin(ctx context.Context, hash cid.Cid, maxDepth int) erro
 	}
 
 	path := fmt.Sprintf("pin/add?arg=%s&%s", hash, pinArgs)
+
+	ctx, cancel := context.WithTimeout(ctx, ipfs.config.PinTimeout)
+	defer cancel()
+
 	_, err = ipfs.postCtx(ctx, path, "", nil)
 	if err == nil {
 		logger.Info("IPFS Pin request succeeded: ", hash)
